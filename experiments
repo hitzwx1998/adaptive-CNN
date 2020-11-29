@@ -1,0 +1,455 @@
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
+from sklearn.metrics import classification_report
+# gpu计算用的
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
+config = ConfigProto()
+config.gpu_options.allow_growth = True
+session = InteractiveSession(config=config)
+
+# 读取风机叶片结冰数据15 包括正常数据，故障数据以及标签
+# 读取后是DataFrame格式
+# 训练数据
+train_x_normal_dataframe = pd.read_csv('train_x_normal.csv')
+label_y_normal_dataframe = pd.read_csv('label_y_normal.csv')
+train_x_failure_dataframe = pd.read_csv('train_x_failure.csv')
+label_y_failure_dataframe = pd.read_csv('label_y_failure.csv')
+
+# 测试数据
+test_x_dataframe = pd.read_csv('test_x.csv')
+test_y_dataframe = pd.read_csv('test_y.csv')
+
+
+# 将DataFrame格式转换为numpy格式
+# 训练数据
+train_x_normal = train_x_normal_dataframe.values[:,1:]
+train_x_failure = train_x_failure_dataframe.values[:,1:]
+label_y_normal = label_y_normal_dataframe.values[:,1:]
+label_y_failure = label_y_failure_dataframe.values[:,1:]
+
+# 测试数据
+test_x = test_x_dataframe.values[:,1:]
+test_y = test_y_dataframe.values[:,1:]
+
+
+# 输出各个数据的维度
+print(train_x_normal.shape,label_y_normal.shape,train_x_failure.shape,label_y_normal.shape)
+# 正常数据和故障数据比例大约为15：1，属于不平衡分类问题。
+# 需要对正常数据进行欠采样，对故障数据进行过采样
+
+
+# 对正常数据进行欠采样
+# 欠采样分数
+T1 = 5
+# 欠采样之后的数据个数
+size = int(train_x_normal.shape[0] / T1)
+# 取size大小的正常数据，以及正常数据的标签
+train_x_normal = train_x_normal[:size,:]
+label_y_normal = label_y_normal[:size,:]
+
+# 对故障数据进行过采样
+# 利用python中的包 smote()
+
+
+
+# 正常数据、故障数据拼接  正常标签，故障标签拼接   其中正常数据已经进行欠采样
+# train_x : [samples,106*26]
+# train_y : [samples,1]
+train_x = np.r_[train_x_normal,train_x_failure]
+train_y = np.r_[label_y_normal,label_y_failure]
+
+# 调用模型
+smote_model = SMOTE()
+# 进行过采样处理
+train_x_smote,train_y_smote = smote_model.fit_sample(train_x,train_y)
+
+train_y_smote = np.reshape(train_y_smote,newshape=(train_y_smote.shape[0],1))
+# 输出过采样后数据的维度
+print('----------过采样之后的数据维度----------')
+print(train_x_smote.shape,train_y_smote.shape)
+
+# 将特征值和目标值组合成一个DataFrame
+#smote_df = pd.concat([train_x_smote,train_y_smote],axis=1)
+#print('----------查看分布情况----------')
+#print(smote_df.groupby('label').count())
+
+# 实现测试数据平衡
+test_x_normal = test_x[:1000,:]
+test_y_normal = test_y[:1000,:]
+test_x_failure = test_x[-600:,:]
+test_y_failure = test_y[-600:,:]
+
+test_x = np.r_[test_x_normal,test_x_failure]
+test_y = np.r_[test_y_normal,test_y_failure]
+
+# 数据归一化
+scaler = StandardScaler()
+train_x = scaler.fit_transform(train_x_smote)
+test_x = scaler.transform(test_x)
+
+train_y = train_y_smote
+# 调整输入数据形状
+# train_x : [samples,106*26] => [samples,106,26]
+train_x = np.reshape(train_x,newshape=(train_x.shape[0],106,26))
+test_x = np.reshape(test_x,newshape=(test_x.shape[0],106,26))
+
+# 打印
+print('----------训练集数据形状----------')
+print(train_x.shape,train_y.shape)
+print('----------测试数据集形状----------')
+print(test_x.shape,test_y.shape)
+# 进行模型搭建
+
+#------------------------------------------------------------------------------------------------
+
+print('----------只使用1维卷积----------')
+# 只使用1维卷积
+cnn_model = tf.keras.Sequential()
+# 1conv : [samples,106,26] => [samples,97,64]
+cnn_model.add(tf.keras.layers.Conv1D(filters=64,kernel_size=10,strides=3,activation='relu'))
+# 2conv : [samples,97,64] => [samples,88,64]
+cnn_model.add(tf.keras.layers.Conv1D(filters=64,kernel_size=10,activation='relu'))
+# maxpool : [samples,88,64] => [samples,29,64]
+cnn_model.add(tf.keras.layers.MaxPool1D(pool_size=2))
+# 3conv : [samples,29,64] => [samples,14,100]
+#cnn_model.add(tf.keras.layers.Conv1D(filters=100,kernel_size=3,strides=2,activation='relu'))
+# 4conv : [samples,14,100] => [samples,6,100]
+#cnn_model.add(tf.keras.layers.Conv1D(filters=100,kernel_size=3,strides=2,activation='relu'))
+# Global Average Pooling : [samples,6,100] => [samples,1,100]
+#cnn_model.add(tf.keras.layers.GlobalAveragePooling1D())
+# Dropout
+#cnn_model.add(tf.keras.layers.Dropout(0.5))
+# softmax激活的全连接层
+#cnn_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 展平 : [samples,6,100] => [samples,600]
+cnn_model.add(tf.keras.layers.Flatten())
+# 全连接层
+cnn_model.add(tf.keras.layers.Dense(64,activation='relu'))
+cnn_model.add(tf.keras.layers.Dense(32,activation='relu'))
+cnn_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 模型提纲
+cnn_model.build(input_shape=[None,106,26])
+cnn_model.summary()
+
+# 随机初始化任一输入
+x = tf.random.uniform(shape=[1,106,26])
+for layer in cnn_model.layers:
+    x = layer(x)
+    print(layer.name,'output.shape\t : ',x.shape)
+
+# 模型编译
+cnn_model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+
+# 模型训练
+training_cnn = cnn_model.fit(train_x,train_y,batch_size=128,epochs=30,validation_split=0.2)
+
+# 保存模型
+cnn_model.save('cnn_model.model')
+
+# 绘制训练过程损失
+plt.plot(training_cnn.history['loss'],label='cnn train')
+plt.legend()
+plt.show()
+
+cnn_model.evaluate(test_x,test_y)
+
+predict_y = cnn_model.predict(test_x)
+print('----------模型对测试集的预测输出的维度----------')
+print(predict_y.shape)
+print('----------模型对测试集的预测的输出的前5行----------')
+print(predict_y[:5,:])
+
+# 生成判断类别结果
+predict_y_result = np.zeros(shape=[predict_y.shape[0],1])
+for i in range(predict_y.shape[0]):
+    if predict_y[i][0] > predict_y[i][1]:
+        predict_y_result[i,0] = 0
+    else:
+        predict_y_result[i,0] = 1
+# 打印结果维度
+print(predict_y_result.shape,test_y.shape)
+# 打印分类报告
+print('----------分类报告----------')
+print(classification_report(test_y,predict_y_result))
+
+#------------------------------------------------------------------------------------------------
+'''
+print('----------只使用LSTM----------')
+LSTM_model = tf.keras.Sequential()
+
+LSTM_model.add(tf.keras.layers.LSTM(100,activation='relu',return_sequences=True))
+LSTM_model.add(tf.keras.layers.LSTM(50,activation='relu'))
+LSTM_model.add(tf.keras.layers.Dropout(0.5))
+LSTM_model.add(tf.keras.layers.Dense(64,activation='relu'))
+LSTM_model.add(tf.keras.layers.Dropout(0.5))
+LSTM_model.add(tf.keras.layers.Dense(32,activation='relu'))
+LSTM_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 模型提纲
+LSTM_model.build(input_shape=(None,106,26))
+LSTM_model.summary()
+
+# 初始化任一输入
+x = tf.random.uniform(shape=(1,106,26))
+for layer in LSTM_model.layers:
+    x = layer(x)
+    print(layer.name,'output.shape\t',x.shape)
+
+# 模型编译
+LSTM_model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                   loss='sparse_categorical_crossentropy',
+                   metrics=['accuracy'])
+
+# 模型训练
+training_LSTM = LSTM_model.fit(train_x,train_y,batch_size=128,epochs=30,validation_split=0.2)
+
+# 画出训练过程中的损失
+plt.plot(training_LSTM.history['loss'],label='LSTM train')
+plt.legend()
+plt.show()
+
+# 模型评估
+print('----------模型评估----------')
+LSTM_model.evaluate(test_x,test_y)
+
+predict_y = LSTM_model.predict(test_x)
+print('----------模型对测试集的预测输出的维度----------')
+print(predict_y.shape)
+print('----------模型对测试集的预测的输出的前5行----------')
+print(predict_y[:5,:])
+
+# 生成判断类别结果
+predict_y_result = np.zeros(shape=[predict_y.shape[0],1])
+for i in range(predict_y.shape[0]):
+    if predict_y[i][0] > predict_y[i][1]:
+        predict_y_result[i,0] = 0
+    else:
+        predict_y_result[i,0] = 1
+# 打印结果维度
+print(predict_y_result.shape,test_y.shape)
+# 打印分类报告
+print('----------分类报告----------')
+print(classification_report(test_y,predict_y_result))
+'''
+#------------------------------------------------------------------------------------------------
+
+print('----------只使用BILSTM----------')
+BILSTM_model = tf.keras.Sequential()
+BILSTM_model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(100,activation='relu',return_sequences=True)))
+#BILSTM_model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(128,activation='relu',return_sequences=True)))
+BILSTM_model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(50,activation='relu')))
+BILSTM_model.add(tf.keras.layers.Dropout(0.5))
+BILSTM_model.add(tf.keras.layers.Dense(64,activation='relu'))
+BILSTM_model.add(tf.keras.layers.Dropout(0.5))
+BILSTM_model.add(tf.keras.layers.Dense(32,activation='relu'))
+BILSTM_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 模型提纲
+BILSTM_model.build(input_shape=(None,106,26))
+BILSTM_model.summary()
+
+# 初始化任一输入
+x = tf.random.uniform(shape=(1,106,26))
+for layer in BILSTM_model.layers:
+    x = layer(x)
+    print(layer.name,'output.shape\t',x.shape)
+
+# 模型编译
+BILSTM_model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                     loss='sparse_categorical_crossentropy',
+                     metrics=['accuracy'])
+
+# 模型训练
+training_BILSTM = BILSTM_model.fit(train_x,train_y,batch_size=128,epochs=30,validation_split=0.2)
+
+# 画出训练过程中的损失
+plt.plot(training_BILSTM.history['loss'],label='BILSTM train')
+plt.legend()
+plt.show()
+
+
+predict_y = BILSTM_model.predict(test_x)
+print('----------模型对测试集的预测输出的维度----------')
+print(predict_y.shape)
+print('----------模型对测试集的预测的输出的前5行----------')
+print(predict_y[:5,:])
+
+# 生成判断类别结果
+predict_y_result = np.zeros(shape=[predict_y.shape[0],1])
+for i in range(predict_y.shape[0]):
+    if predict_y[i][0] > predict_y[i][1]:
+        predict_y_result[i,0] = 0
+    else:
+        predict_y_result[i,0] = 1
+# 打印结果维度
+print(predict_y_result.shape,test_y.shape)
+# 打印分类报告
+print('----------分类报告----------')
+print(classification_report(test_y,predict_y_result))
+
+#------------------------------------------------------------------------------------------------
+
+
+print('----------cnn+LSTM----------')
+CLSTM_model = tf.keras.Sequential()
+CLSTM_model.add(tf.keras.layers.Conv1D(filters=32,kernel_size=10,strides=2,activation='relu'))
+CLSTM_model.add(tf.keras.layers.MaxPool1D(pool_size=2))
+CLSTM_model.add(tf.keras.layers.LSTM(100,activation='relu',return_sequences=True))
+CLSTM_model.add(tf.keras.layers.LSTM(50,activation='relu'))
+CLSTM_model.add(tf.keras.layers.Dropout(0.5))
+CLSTM_model.add(tf.keras.layers.Dense(64,activation='relu'))
+CLSTM_model.add(tf.keras.layers.Dropout(0.5))
+CLSTM_model.add(tf.keras.layers.Dense(32,activation='relu'))
+CLSTM_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 模型提纲
+CLSTM_model.build(input_shape=(None,106,26))
+CLSTM_model.summary()
+
+# 初始化任一输出
+x = tf.random.uniform(shape=(1,106,26))
+for layer in CLSTM_model.layers:
+    x = layer(x)
+    print(layer.name,'output.shape\t',x.shape)
+
+# 模型编译
+CLSTM_model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                    loss='sparse_categorical_crossentropy',
+                    metrics=['accuracy'])
+
+# 模型训练
+training_CLSTM = CLSTM_model.fit(train_x,train_y,batch_size=128,epochs=20,validation_split=0.2)
+
+# 画出训练过程中的损失
+plt.plot(training_CLSTM.history['loss'],label='CNN LSTM train')
+plt.plot(training_CLSTM.history['val_loss'],label='CNN LSTM test')
+plt.legend()
+plt.show()
+
+print('----------模型评估----------')
+CLSTM_model.evaluate(test_x,test_y)
+
+predict_y = CLSTM_model.predict(test_x)
+print('----------模型对测试集的预测输出的维度----------')
+print(predict_y.shape)
+print('----------模型对测试集的预测的输出的前5行----------')
+print(predict_y[:5,:])
+
+# 生成判断类别结果
+predict_y_result = np.zeros(shape=[predict_y.shape[0],1])
+for i in range(predict_y.shape[0]):
+    if predict_y[i][0] > predict_y[i][1]:
+        predict_y_result[i,0] = 0
+    else:
+        predict_y_result[i,0] = 1
+# 打印结果维度
+print(predict_y_result.shape,test_y.shape)
+# 打印分类报告
+print('----------分类报告----------')
+print(classification_report(test_y,predict_y_result))
+
+#------------------------------------------------------------------------------------------------
+
+class my_adaptive_activation(tf.keras.layers.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def build(self, input_shape):
+        self.lembda = self.add_weight(name='lambda', shape=[1], initializer=tf.random_normal_initializer())
+        self.lembda1 = self.add_weight(name='lambda1',shape=[input_shape[-1],input_shape[-1]],initializer=tf.random_normal_initializer())
+        self.lembda2 = self.add_weight(name='lambda2',shape=[input_shape[-1],input_shape[-1]],initializer=tf.random_normal_initializer())
+    def call(self, inputs, **kwargs):
+        y_elu = tf.nn.elu(inputs)
+        y_sigmoid = tf.nn.sigmoid(inputs)
+        y_prelu_pos = tf.nn.relu(inputs)
+        y_prelu_neg = self.lembda * (inputs - tf.abs(inputs)) * 0.5
+        y_prelu = y_prelu_pos + y_prelu_neg
+
+        y_sigmoid_1 = 1 / (1 + tf.exp(-1 * tf.matmul(inputs,self.lembda1)))
+        y_sigmoid_2 = 1 / (1 + tf.exp(-1 * tf.matmul(inputs,self.lembda2)))
+
+
+
+        y_pred = y_sigmoid_1 * y_elu + y_sigmoid_2 * y_prelu + (1 - y_sigmoid_1 - y_sigmoid_2) * y_sigmoid
+
+        return y_pred
+
+print('----------使用门控自适应cnn+LSTM----------')
+cnn_LSTM_model = tf.keras.Sequential()
+cnn_LSTM_model.add(tf.keras.layers.Conv1D(filters=32,kernel_size=10,strides=2))
+cnn_LSTM_model.add(my_adaptive_activation())
+#cnn_LSTM_model.add(tf.keras.layers.Conv1D(filters=64,kernel_size=10))
+#cnn_LSTM_model.add(my_adaptive_activation())
+cnn_LSTM_model.add(tf.keras.layers.MaxPool1D(pool_size=2))
+cnn_LSTM_model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(100,activation='relu',return_sequences=True)))
+cnn_LSTM_model.add(tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(50,activation='relu')))
+cnn_LSTM_model.add(tf.keras.layers.Dropout(0.5))
+cnn_LSTM_model.add(tf.keras.layers.Dense(64,activation='relu'))
+cnn_LSTM_model.add(tf.keras.layers.Dropout(0.5))
+cnn_LSTM_model.add(tf.keras.layers.Dense(32,activation='relu'))
+cnn_LSTM_model.add(tf.keras.layers.Dense(2,activation='softmax'))
+
+# 模型提纲
+cnn_LSTM_model.build(input_shape=(None,106,26))
+cnn_LSTM_model.summary()
+
+# 初始化任一输入
+x = tf.random.uniform(shape=(1,106,26))
+for layer in cnn_LSTM_model.layers:
+    x = layer(x)
+    print(layer.name,'output.shape\t',x.shape)
+
+# 模型编译
+cnn_LSTM_model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+                       loss='sparse_categorical_crossentropy',
+                       metrics=['accuracy'])
+
+# 模型训练
+training_cnn_LSTM = cnn_LSTM_model.fit(train_x,train_y,batch_size=128,epochs=10,validation_split=0.2)
+
+# 画出训练过程中的损失
+plt.plot(training_cnn_LSTM.history['loss'],label='cnn-LSTM train')
+plt.plot(training_cnn_LSTM.history['val_loss'],label='cnn-LSTM test')
+plt.legend()
+plt.show()
+
+
+cnn_LSTM_model.evaluate(test_x,test_y)
+
+predict_y = cnn_LSTM_model.predict(test_x)
+print('----------模型对测试集的预测输出的维度----------')
+print(predict_y.shape)
+print('----------模型对测试集的预测的输出的前5行----------')
+print(predict_y[:5,:])
+
+# 生成判断类别结果
+predict_y_result = np.zeros(shape=[predict_y.shape[0],1])
+for i in range(predict_y.shape[0]):
+    if predict_y[i][0] > predict_y[i][1]:
+        predict_y_result[i,0] = 0
+    else:
+        predict_y_result[i,0] = 1
+# 打印结果维度
+print(predict_y_result.shape,test_y.shape)
+# 打印分类报告
+print('----------分类报告----------')
+print(classification_report(test_y,predict_y_result))
+
+failure_error = []
+normal_error = []
+
+for i in range(predict_y_result.shape[0]):
+    if test_y[i,0] == 1 and predict_y_result[i,0] == 0:
+        failure_error.append(i)
+
+print('----------本应该是故障数据但是没检测出来的----------')
+print(failure_error)
