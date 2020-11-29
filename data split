@@ -1,0 +1,74 @@
+import pandas as pd
+import numpy as np
+import random
+import time
+import os
+import pickle
+import csv
+import matplotlib.pyplot as plt
+#import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+import tensorflow.contrib.slim as slim
+from sklearn.datasets import make_classification
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.manifold import TSNE
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import recall_score
+from imblearn.datasets import fetch_datasets
+from collections import Counter
+from sklearn.preprocessing import MinMaxScaler
+import warnings
+
+from sklearn.model_selection import KFold
+
+warnings.filterwarnings('ignore')
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+# dataSet = 'satimage'
+# dataSet = 'phoneme'
+# dataSet = 'pen-digits'
+# dataSet = 'wine'
+# dataSet = 'mammo'
+# dataSet = 'letter'
+# dataSet = 'avila'
+dataSet = 'cisfraud'
+
+if not os.path.exists('result'):
+    os.makedirs('result')
+if not os.path.exists('./result/' + str(dataSet)):
+    os.makedirs('./result/' + str(dataSet))
+
+seed = 123
+tf.reset_default_graph()
+tf.set_random_seed(seed)
+np.random.seed(seed)
+
+path = './data/' + str(dataSet) + '.csv'
+data = pd.read_csv(path, header=None)
+#data = np.loadtxt(open(path,"rb"),delimiter=",",skiprows=0)
+data = data.values
+x = data[:, :-1]
+y = data[:, -1]
+
+minmax = MinMaxScaler()
+x = minmax.fit_transform(x)
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=12)
+y_train = np.reshape(y_train, (-1, 1))
+y_test = np.reshape(y_test, (-1, 1))
+train_data = np.hstack((x_train, y_train))
+test_data = np.hstack((x_test, y_test))
+positive_data = train_data[train_data[:, -1] == 1]
+
+posPath = ('./result/' + str(dataSet) +'/' + str(dataSet) + '_pos.csv')
+trainPath = ('./result/' + str(dataSet) +'/' + str(dataSet) + '_train.csv')
+testPath = ('./result/' + str(dataSet) +'/' + str(dataSet) + '_test.csv')
+
+np.savetxt(trainPath, train_data, fmt='%f', delimiter=',',)
+np.savetxt(testPath, test_data, fmt='%f', delimiter=',',)
+np.savetxt(posPath, positive_data[:, :-1], fmt='%f', delimiter=',',)
