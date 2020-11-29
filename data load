@@ -1,0 +1,50 @@
+import numpy as np
+import pandas as pd
+def load_dataset_15():
+    """
+    该函数用于数据加载15.data
+    :return:
+        train_x: -原始训练数据
+        train_y: -原始训练数据分组
+    """
+    #加载数据
+    csv_data = pd.read_csv('D:\\Pycharm\\PyCharm Community Edition 2019.2.3\\Imbalanced_learning\\15_data.csv')  # 读取训练数据
+
+    #将数据变成矩阵形式
+    csv_data = np.array(csv_data)
+
+    #删除矩阵中的第一行，第一列
+    train_x = np.delete(csv_data,0,0)
+    train_x = np.delete(train_x,0,1)
+    #将分组提取出来
+    train_y = train_x[:,26]
+    #删除分组列
+    train_x = np.delete(train_x,26,1)
+
+
+    return train_x,train_y
+
+
+def load_dataset_21():
+    """
+    该函数用于数据加载21.data
+    :return:
+        train_x: -原始训练数据
+        train_y: -原始训练数据分组
+    """
+    #加载数据
+    csv_data = pd.read_csv('D:\\Pycharm\\PyCharm Community Edition 2019.2.3\\Imbalanced_learning\\21_data.csv')  # 读取训练数据
+
+    #将数据变成矩阵形式
+    csv_data = np.array(csv_data)
+
+    #删除矩阵中的第一行，第一列
+    train_x = np.delete(csv_data,0,0)
+    train_x = np.delete(train_x,0,1)
+    #将分组提取出来
+    train_y = train_x[:,26]
+    #删除分组列
+    train_x = np.delete(train_x,26,1)
+
+
+    return train_x,train_y
