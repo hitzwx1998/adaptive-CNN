@@ -1,0 +1,412 @@
+from numpy import *
+import numpy as np
+from Data_Load import *
+
+#加载数据
+train_x_orig21,train_y_orig21 = load_dataset_21()
+
+train_x_orig_15,train_y_orig_15 = load_dataset_15()
+print('----------数据集15的维度----------')
+print(train_x_orig_15.shape)
+print(train_y_orig_15.shape)
+print('----------数据集21的维度----------')
+print(train_x_orig21.shape)
+print(train_y_orig21.shape)
+
+#时间窗长度K
+shijianchuang = 106
+#步长L
+buchang = 5
+
+def getFeature(juzhen,train_x_getFeature,y_label,label_y):
+    """
+    该函数实现时间窗特征提取,将K行训练数据特征合成一个行向量，并存入一个矩阵中
+    :param juzhen: 提取出的原始数据集（正例/反例）
+    :param train_x_getFeature: 经过时间窗压缩后的特征向量构成的矩阵
+    :param shijianchuang: 时间窗的长度
+    :param buchang: 时间窗的步长
+    :param y_label: 代表正例还是反例，“1”代表正例数据（故障数据），“0”代表反例数据（正常数据）
+    :return:
+        train_x_getFeature；-时间窗之后的训练数据集
+        label_y: -打入的标签
+    """
+    #从矩阵第一行循环到矩阵最后一行，步长为L
+    for i in range(0,len(juzhen),buchang):
+
+        #如果宽度满足
+        if i+shijianchuang<len(juzhen):
+            #将子矩阵拿出来
+            smalljuzhen = juzhen[i:i+shijianchuang,0:]
+
+
+            #将子矩阵压缩成行向量，维度为（1，106*26）
+            smalljuzhen_flatten = smalljuzhen.reshape(1,-1)
+
+            #将行向量储存到train_x_getFeature矩阵中，每次加入到原矩阵的最后一行
+            train_x_getFeature = np.r_[train_x_getFeature,smalljuzhen_flatten]
+
+            #print(train_x_getFeature.shape)
+
+            #根据训练集类别打上标签，错误数据为正例
+            if y_label == "1":
+                unit = array([[1]])
+                label_y = np.r_[label_y, unit]
+                #print(label_y.shape)
+
+            #根据训练集类别打上标签，正常数据为反例
+            if y_label == "0":
+                zero = array([[0]])
+                label_y = np.r_[label_y,zero]
+                #print(label_y.shape)
+    print("完成一次")
+
+    return train_x_getFeature,label_y
+
+
+
+def train_failure():
+    """
+    该函数用于得到故障数据的训练的数据集和标签集
+    train_x_getFeature: -人工构造的行向量，用于存储训练数据集
+    label_y: -人工构造的列向量，用于存储标签集
+    :return:
+        train_x_failure: -故障数据的经时间窗机制后的最终的训练数据集
+        label_y: -故障数据的经时间窗机制后的最终的训练数据的标签集
+
+    """
+    print("-----train_failure-----")
+    # 构造一个维度为（1，time_windows,26,1）的行向量，用于后续储存训练数据集
+    train_x_getFeature = np.zeros((1,shijianchuang * train_x_orig_15.shape[1]))
+
+    # 构造一个维度为（1，1）的列向量，用于打标签
+    label_y = array([[1]])
+
+    '''
+    M1 = train_x_orig[12289:12948,0:26]
+    train_x_getFeature,label_y= getFeature(M1,train_x_getFeature,'1',label_y)
+    M2 = train_x_orig[54031:54778,0:26]
+    train_x_getFeature,label_y = getFeature(M2,train_x_getFeature,'1',label_y)
+    M3 = train_x_orig[58215:59166,0:26]
+    train_x_getFeature,label_y = getFeature(M3,train_x_getFeature,'1',label_y)
+    M4 = train_x_orig[80458:81409,0:26]
+    train_x_getFeature,label_y = getFeature(M4,train_x_getFeature,'1',label_y)
+    M5 = train_x_orig[91125:91342,0:26]
+    train_x_getFeature,label_y = getFeature(M5,train_x_getFeature,'1',label_y)
+    M6 = train_x_orig[141192:141626,0:26]
+    train_x_getFeature,label_y = getFeature(M6,train_x_getFeature,'1',label_y)
+    M7 = train_x_orig[143054:143468,0:26]
+    train_x_getFeature,label_y = getFeature(M7,train_x_getFeature,'1',label_y)
+    M8 = train_x_orig[144945:145896,0:26]
+    train_x_getFeature,label_y = getFeature(M8,train_x_getFeature,'1',label_y)
+    M9 = train_x_orig[147368:148319,0:26]
+    train_x_getFeature,label_y = getFeature(M9,train_x_getFeature,'1',label_y)
+    M10 = train_x_orig[148541:148997,0:26]
+    train_x_getFeature,label_y = getFeature(M10,train_x_getFeature,'1',label_y)
+    '''
+
+    M1 = train_x_orig21[167018:167969,0:26]
+    train_x_getFeature,label_y = getFeature(M1,train_x_getFeature,'1',label_y)
+    M2 = train_x_orig21[176277:177228,0:26]
+    train_x_getFeature,label_y = getFeature(M2,train_x_getFeature,'1',label_y)
+    M3 = train_x_orig21[179743:180797,0:26]
+    train_x_getFeature,label_y = getFeature(M3,train_x_getFeature,'1',label_y)
+    M4 = train_x_orig21[183271:184222,0:26]
+    train_x_getFeature,label_y = getFeature(M4,train_x_getFeature,'1',label_y)
+    
+
+
+    M5 = train_x_orig_15[6588:7030, 0:26]
+    train_x_getFeature, label_y = getFeature(M5, train_x_getFeature, '1', label_y)
+    M6 = train_x_orig_15[50422:50687, 0:26]
+    train_x_getFeature, label_y = getFeature(M6, train_x_getFeature, '1', label_y)
+    M7 = train_x_orig_15[55064:56021, 0:26]
+    train_x_getFeature, label_y = getFeature(M7, train_x_getFeature, '1', label_y)
+    M8 = train_x_orig_15[95615:96771, 0:26]
+    train_x_getFeature, label_y = getFeature(M8, train_x_getFeature, '1', label_y)
+    M9 = train_x_orig_15[97765:98722, 0:26]
+    train_x_getFeature, label_y = getFeature(M9, train_x_getFeature, '1', label_y)
+    M10 = train_x_orig_15[133894:133999, 0:26]
+    train_x_getFeature, label_y = getFeature(M10, train_x_getFeature, '1', label_y)
+    M11 = train_x_orig_15[148246:148597, 0:26]
+    train_x_getFeature, label_y = getFeature(M11, train_x_getFeature, '1', label_y)
+    M12 = train_x_orig_15[151714:152668, 0:26]
+    train_x_getFeature, label_y = getFeature(M12, train_x_getFeature, '1', label_y)
+    M13 = train_x_orig_15[153489:154442, 0:26]
+    train_x_getFeature, label_y = getFeature(M13, train_x_getFeature, '1', label_y)
+    M14 = train_x_orig_15[154962:156254, 0:26]
+    train_x_getFeature, label_y = getFeature(M14, train_x_getFeature, '1', label_y)
+    M15 = train_x_orig_15[186800:187755, 0:26]
+    train_x_getFeature, label_y = getFeature(M15, train_x_getFeature, '1', label_y)
+    M16 = train_x_orig_15[190108:191361, 0:26]
+    train_x_getFeature, label_y = getFeature(M16, train_x_getFeature, '1', label_y)
+    M17 = train_x_orig_15[194574:194721, 0:26]
+    train_x_getFeature, label_y = getFeature(M17, train_x_getFeature, '1', label_y)
+    M18 = train_x_orig_15[208971:209926, 0:26]
+    train_x_getFeature, label_y = getFeature(M18, train_x_getFeature, '1', label_y)
+    M19 = train_x_orig_15[217345:217960, 0:26]
+    train_x_getFeature, label_y = getFeature(M19, train_x_getFeature, '1', label_y)
+    M20 = train_x_orig_15[219199:220154, 0:26]
+    train_x_getFeature, label_y = getFeature(M20, train_x_getFeature, '1', label_y)
+    M21 = train_x_orig_15[233197:234154, 0:26]
+    train_x_getFeature, label_y = getFeature(M21, train_x_getFeature, '1', label_y)
+    M22 = train_x_orig_15[233197:234154, 0:26]
+    train_x_getFeature, label_y = getFeature(M22, train_x_getFeature, '1', label_y)
+    M23 = train_x_orig_15[234163:235559, 0:26]
+    train_x_getFeature, label_y = getFeature(M23, train_x_getFeature, '1', label_y)
+    M24 = train_x_orig_15[239524:240477, 0:26]
+    train_x_getFeature, label_y = getFeature(M24, train_x_getFeature, '1', label_y)
+    M25 = train_x_orig_15[260597:261554, 0:26]
+    train_x_getFeature, label_y = getFeature(M25, train_x_getFeature, '1', label_y)
+    M26 = train_x_orig_15[263112:264359, 0:26]
+    train_x_getFeature, label_y = getFeature(M26, train_x_getFeature, '1', label_y)
+    M27 = train_x_orig_15[265086:265994, 0:26]
+    train_x_getFeature, label_y = getFeature(M27, train_x_getFeature, '1', label_y)
+    M28 = train_x_orig_15[268583:269128, 0:26]
+    train_x_getFeature, label_y = getFeature(M28, train_x_getFeature, '1', label_y)
+    M29 = train_x_orig_15[285572:286529, 0:26]
+    train_x_getFeature, label_y = getFeature(M29, train_x_getFeature, '1', label_y)
+    M30 = train_x_orig_15[306209:306799, 0:26]
+    train_x_getFeature, label_y = getFeature(M30, train_x_getFeature, '1', label_y)
+    M31 = train_x_orig_15[311827:312695, 0:26]
+    train_x_getFeature, label_y = getFeature(M31, train_x_getFeature, '1', label_y)
+    M32 = train_x_orig_15[333546:334517, 0:26]
+    train_x_getFeature, label_y = getFeature(M32, train_x_getFeature, '1', label_y)
+    M33 = train_x_orig_15[343253:344207, 0:26]
+    train_x_getFeature, label_y = getFeature(M33, train_x_getFeature, '1', label_y)
+    M34 = train_x_orig_15[392932:393886, 0:26]
+    train_x_getFeature, label_y = getFeature(M34, train_x_getFeature, '1', label_y)
+
+    # 故障数据训练集 = 提取出的训练特征矩阵删掉人为创造的首行
+    train_x_failure = np.delete(train_x_getFeature, 0, 0)
+    # 故障数据标签集 = 打上的标签删掉人为创造的首行
+    label_y_failure = np.delete(label_y, 0, 0)
+
+
+    # 打乱顺序
+    figure_count = train_x_failure.shape[0]
+    re_order = np.random.permutation(figure_count)
+    train_x_failure = train_x_failure[re_order, :]
+
+    # 将故障数据集保存为csv文件
+    train_x_failure_csv = pd.DataFrame(train_x_failure)
+    train_x_failure_csv.to_csv("train_x_failure.csv")
+    label_y_failure_csv = pd.DataFrame(label_y_failure)
+    label_y_failure_csv.to_csv("label_y_failure.csv")
+
+    print("----------训练数据中故障情况的数据维度----------")
+    print(train_x_failure.shape,label_y_failure.shape)
+
+    return train_x_failure, label_y_failure
+
+
+
+
+def train_normal():
+    """
+    该函数用于得到正常数据训练的数据集和标签集
+    train_x_getFeature: -人工构造的行向量，用于存储训练数据集
+    label_y: -人工构造的列向量，用于存储标签集
+    :return:
+        train_x_normal: -正常数据的经时间窗机制后的最终的训练数据集
+        label_y_normal: -正常数据的经时间窗机制后的最终的训练数据的标签集
+    """
+
+
+    print("-----train_normal-----")
+    # 构造一个维度为（1，26*26）的行向量，用于后续储存训练数据集
+    train_x_getFeature = np.zeros((1, shijianchuang * train_x_orig_15.shape[1]))
+    # 构造一个维度为（1，1）的列向量，用于打标签
+    label_y = array([[1]])
+
+    '''
+    M1 = train_x_orig21[0:12019, 0:26]
+    train_x_getFeature, label_y = getFeature(M1, train_x_getFeature, '0', label_y)
+    M2 = train_x_orig21[12948:53031, 0:26]
+    train_x_getFeature, label_y = getFeature(M2, train_x_getFeature, '0', label_y)
+    M3 = train_x_orig21[54778:57215, 0:26]
+    train_x_getFeature, label_y = getFeature(M3, train_x_getFeature, '0', label_y)
+    M4 = train_x_orig21[59166:79883, 0:26]
+    train_x_getFeature, label_y = getFeature(M4, train_x_getFeature, '0', label_y)
+    M5 = train_x_orig21[81409:89999, 0:26]
+    train_x_getFeature, label_y = getFeature(M5, train_x_getFeature, '0', label_y)
+    M6 = train_x_orig21[91342:140192, 0:26]
+    train_x_getFeature, label_y = getFeature(M6, train_x_getFeature, '0', label_y)
+    M7 = train_x_orig21[141626:142263, 0:26]
+    train_x_getFeature, label_y = getFeature(M7, train_x_getFeature, '0', label_y)
+    M8 = train_x_orig21[143468:143945, 0:26]
+    train_x_getFeature, label_y = getFeature(M8, train_x_getFeature, '0', label_y)
+    M9 = train_x_orig21[145896:146368, 0:26]
+    train_x_getFeature, label_y = getFeature(M9, train_x_getFeature, '0', label_y)
+    '''
+
+    M1 = train_x_orig21[149999:166018, 0:26]
+    train_x_getFeature, label_y = getFeature(M1, train_x_getFeature, '0', label_y)
+    M2 = train_x_orig21[167969:175277, 0:26]
+    train_x_getFeature, label_y = getFeature(M2, train_x_getFeature, '0', label_y)
+    M3 = train_x_orig21[177228:178675, 0:26]
+    train_x_getFeature, label_y = getFeature(M3, train_x_getFeature, '0', label_y)
+    M4 = train_x_orig21[180797:182271, 0:26]
+    train_x_getFeature, label_y = getFeature(M4, train_x_getFeature, '0', label_y)
+    M5 = train_x_orig21[184222:190493, 0:26]
+    train_x_getFeature, label_y = getFeature(M5, train_x_getFeature, '0', label_y)
+
+    M6 = train_x_orig_15[1:4759, 0:26]
+    train_x_getFeature, label_y = getFeature(M6, train_x_getFeature, '0', label_y)
+    M7 = train_x_orig_15[4871:5841, 0:26]
+    train_x_getFeature, label_y = getFeature(M7, train_x_getFeature, '0', label_y)
+    M8 = train_x_orig_15[7031:50046, 0:26]
+    train_x_getFeature, label_y = getFeature(M8, train_x_getFeature, '0', label_y)
+    M9 = train_x_orig_15[50688:54073, 0:26]
+    train_x_getFeature, label_y = getFeature(M9, train_x_getFeature, '0', label_y)
+    M10 = train_x_orig_15[56022:95507, 0:26]
+    train_x_getFeature, label_y = getFeature(M10, train_x_getFeature, '0', label_y)
+    M11 = train_x_orig_15[98723:133754, 0:26]
+    train_x_getFeature, label_y = getFeature(M11, train_x_getFeature, '0', label_y)
+    M12 = train_x_orig_15[134000:148020, 0:26]
+    train_x_getFeature, label_y = getFeature(M12, train_x_getFeature, '0', label_y)
+    M13 = train_x_orig_15[148598:150717, 0:26]
+    train_x_getFeature, label_y = getFeature(M13, train_x_getFeature, '0', label_y)
+    M14 = train_x_orig_15[156256:185804, 0:26]
+    train_x_getFeature, label_y = getFeature(M14, train_x_getFeature, '0', label_y)
+    M15 = train_x_orig_15[187756:189082, 0:26]
+    train_x_getFeature, label_y = getFeature(M15, train_x_getFeature, '0', label_y)
+    M16 = train_x_orig_15[191362:194573, 0:26]
+    train_x_getFeature, label_y = getFeature(M16, train_x_getFeature, '0', label_y)
+    M17 = train_x_orig_15[194722:207981, 0:26]
+    train_x_getFeature, label_y = getFeature(M17, train_x_getFeature, '0', label_y)
+    M18 = train_x_orig_15[209927:216447, 0:26]
+    train_x_getFeature, label_y = getFeature(M18, train_x_getFeature, '0', label_y)
+    M19 = train_x_orig_15[217961:218647, 0:26]
+    train_x_getFeature, label_y = getFeature(M19, train_x_getFeature, '0', label_y)
+    M20 = train_x_orig_15[220156:232207, 0:26]
+    train_x_getFeature, label_y = getFeature(M20, train_x_getFeature, '0', label_y)
+    M21 = train_x_orig_15[235560:238533, 0:26]
+    train_x_getFeature, label_y = getFeature(M21, train_x_getFeature, '0', label_y)
+    M22 = train_x_orig_15[240478:259607, 0:26]
+    train_x_getFeature, label_y = getFeature(M22, train_x_getFeature, '0', label_y)
+    M23 = train_x_orig_15[261554:262122, 0:26]
+    train_x_getFeature, label_y = getFeature(M23, train_x_getFeature, '0', label_y)
+    M24 = train_x_orig_15[264360:264493, 0:26]
+    train_x_getFeature, label_y = getFeature(M24, train_x_getFeature, '0', label_y)
+    M25 = train_x_orig_15[265995:268582, 0:26]
+    train_x_getFeature, label_y = getFeature(M25, train_x_getFeature, '0', label_y)
+    M26 = train_x_orig_15[269129:284581, 0:26]
+    train_x_getFeature, label_y = getFeature(M26, train_x_getFeature, '0', label_y)
+    M27 = train_x_orig_15[286530:305209, 0:26]
+    train_x_getFeature, label_y = getFeature(M27, train_x_getFeature, '0', label_y)
+    M28 = train_x_orig_15[306800:311825, 0:26]
+    train_x_getFeature, label_y = getFeature(M28, train_x_getFeature, '0', label_y)
+    M29 = train_x_orig_15[312696:332746, 0:26]
+    train_x_getFeature, label_y = getFeature(M29, train_x_getFeature, '0', label_y)
+    M30 = train_x_orig_15[334518:343101, 0:26]
+    train_x_getFeature, label_y = getFeature(M30, train_x_getFeature, '0', label_y)
+    M31 = train_x_orig_15[344208:391942, 0:26]
+    train_x_getFeature, label_y = getFeature(M31, train_x_getFeature, '0', label_y)
+
+
+
+
+
+
+
+
+    # 正常数据训练集 = 提取出的训练特征矩阵删掉人为创造的首行
+    train_x_normal = np.delete(train_x_getFeature, 0, 0)
+    # 正常数据标签集 = 打上的标签删掉人为创造的首行
+    label_y_normal = np.delete(label_y, 0, 0)
+
+
+
+    #打乱顺序
+    normal_count = train_x_normal.shape[0]
+    re_order = np.random.permutation(normal_count)
+    train_x_normal = train_x_normal[re_order,:]
+
+
+    #将正常数据集保存为csv文件
+    train_x_normal_csv = pd.DataFrame(train_x_normal)
+    train_x_normal_csv.to_csv("train_x_normal.csv")
+    label_y_normal_csv = pd.DataFrame(label_y_normal)
+    label_y_normal_csv.to_csv("label_y_normal.csv")
+
+    # 输出形状
+    print('----------训练数据正常情况的数据维度----------')
+    print(train_x_normal.shape,label_y_normal.shape)
+    return train_x_normal, label_y_normal
+
+
+
+def data_test():
+    """
+        该函数用于得到测试集 由21data中的第9000-149999行得到
+        :return:
+            test_x: -用于测试的数据集
+            test_y: -用于测试的标签集
+        """
+    print("-----test----")
+    # 构造一个维度为（1，106*26）的行向量，用于后续储存训练数据集
+    test_x_getFeature = np.zeros((1, shijianchuang * train_x_orig21.shape[1]))
+    # 构造一个维度为（1，1）的列向量，用于打标签
+    test_y = np.array([[1]])
+
+    M1 = train_x_orig21[9997:12019, 0:26]
+    test_x_getFeature, test_y = getFeature(M1, test_x_getFeature, '0', test_y)
+    M3 = train_x_orig21[12948:53031, 0:26]
+    test_x_getFeature, test_y = getFeature(M3, test_x_getFeature, '0', test_y)
+    M5 = train_x_orig21[54778:57215, 0:26]
+    test_x_getFeature, test_y = getFeature(M5, test_x_getFeature, '0', test_y)
+    M7 = train_x_orig21[59166:79883, 0:26]
+    test_x_getFeature, test_y = getFeature(M7, test_x_getFeature, '0', test_y)
+    M9 = train_x_orig21[81409:89999, 0:26]
+    test_x_getFeature, test_y = getFeature(M9, test_x_getFeature, '0', test_y)
+    M11 = train_x_orig21[91342:140192, 0:26]
+    test_x_getFeature, test_y = getFeature(M11, test_x_getFeature, '0', test_y)
+    M13 = train_x_orig21[141626:142263, 0:26]
+    test_x_getFeature, test_y = getFeature(M13, test_x_getFeature, '0', test_y)
+    M15 = train_x_orig21[143468:143945, 0:26]
+    test_x_getFeature, test_y = getFeature(M15, test_x_getFeature, '0', test_y)
+    M17 = train_x_orig21[145896:146368, 0:26]
+    test_x_getFeature, test_y = getFeature(M17, test_x_getFeature, '0', test_y)
+
+
+    M2 = train_x_orig21[12289:12948, 0:26]
+    test_x_getFeature, test_y = getFeature(M2, test_x_getFeature, '1', test_y)
+    M4 = train_x_orig21[54031:54778, 0:26]
+    test_x_getFeature, test_y = getFeature(M4, test_x_getFeature, '1', test_y)
+    M6 = train_x_orig21[58215:59166, 0:26]
+    test_x_getFeature, test_y = getFeature(M6, test_x_getFeature, '1', test_y)
+    M8 = train_x_orig21[80458:81409, 0:26]
+    test_x_getFeature, test_y = getFeature(M8, test_x_getFeature, '1', test_y)
+    M10 = train_x_orig21[91125:91342, 0:26]
+    test_x_getFeature, test_y = getFeature(M10, test_x_getFeature, '1', test_y)
+    M12 = train_x_orig21[141192:141626, 0:26]
+    test_x_getFeature, test_y = getFeature(M12, test_x_getFeature, '1', test_y)
+    M14 = train_x_orig21[143054:143468, 0:26]
+    test_x_getFeature, test_y = getFeature(M14, test_x_getFeature, '1', test_y)
+    M16 = train_x_orig21[144945:145896, 0:26]
+    test_x_getFeature, test_y = getFeature(M16, test_x_getFeature, '1', test_y)
+    M18 = train_x_orig21[147368:148319, 0:26]
+    test_x_getFeature, test_y = getFeature(M18, test_x_getFeature, '1', test_y)
+    M19 = train_x_orig21[148541:148997, 0:26]
+    test_x_getFeature, test_y = getFeature(M19, test_x_getFeature, '1', test_y)
+
+    # 正常数据测试集 = 提取出的测试特征矩阵删掉人为创造的首行
+    test_x = np.delete(test_x_getFeature, 0, 0)
+    # 正常数据标签集 = 打上的标签删掉人为创造的首行
+    test_y = np.delete(test_y, 0, 0)
+
+    # 将测试集保存为csv文件
+    test_x_data = pd.DataFrame(test_x)
+    test_x_data.to_csv("test_x.csv")
+    test_y_data = pd.DataFrame(test_y)
+    test_y_data.to_csv("test_y.csv")
+
+    print("----------测试集中数据维度----------")
+    print(test_x.shape,test_y.shape)
+
+    return test_x, test_y
+
+
+train_x_failure,label_y_failure = train_failure()
+train_x_normal,label_y_normal = train_normal()
+test_x,test_y = data_test()
